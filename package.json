@@ -1,5 +1,5 @@
 {
-  "name": "simple-queue",
+  "name": "@kvamse/simple-queue",
   "version": "1.0.0",
   "description": "A lightweight TypeScript queue system with persistence, priority support, and batch processing",
   "main": "dist/index.js",
@@ -31,8 +31,16 @@
     "README.md",
     "LICENSE"
   ],
-  "author": "",
-  "license": "ISC",
+  "author": "Vamsi <kvamsij@gmail.com> (https://github.com/kvamsij)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kvamsi/simple-queue.git"
+  },
+  "bugs": {
+    "url": "https://github.com/kvamsi/simple-queue/issues"
+  },
+  "homepage": "https://github.com/kvamsi/simple-queue#readme",
+  "license": "MIT",
   "dependencies": {
     "ts-node": "^10.9.2",
     "typescript": "^5.8.2",
