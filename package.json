@@ -1,6 +1,6 @@
 {
   "name": "@kvamse/simple-queue",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A lightweight TypeScript queue system with persistence, priority support, and batch processing",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
