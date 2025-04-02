@@ -108,6 +108,41 @@ npm test
 - `npm run watch` - Watch for file changes and restart
 - `npm test` - Run tests
 
+## CI/CD
+
+This project uses GitHub Actions for continuous integration and continuous deployment:
+
+### Continuous Integration
+
+The CI workflow automatically runs on push to main/master branches and on pull requests:
+
+- Runs tests across multiple Node.js versions (16.x, 18.x, 20.x)
+- Verifies the build process
+- Checks TypeScript types
+
+### Continuous Deployment
+
+The CD workflow automatically publishes to npm when a new GitHub release is created:
+
+- Runs on new GitHub releases
+- Executes tests and build
+- Publishes the package to npm
+
+### Setting Up NPM_TOKEN
+
+To enable automated publishing to npm, you need to add your npm token as a GitHub secret:
+
+1. Generate an npm access token:
+   - Log in to npmjs.com
+   - Go to your profile → Access Tokens
+   - Create a new token with "Automation" type
+
+2. Add the token to GitHub secrets:
+   - Go to your GitHub repository
+   - Navigate to Settings → Secrets and variables → Actions
+   - Create a new repository secret named `NPM_TOKEN`
+   - Paste your npm token as the value
+
 ## License
 
 [MIT](./LICENSE)
