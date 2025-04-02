@@ -9,6 +9,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
     
     - name: Use Node.js
       uses: actions/setup-node@v3
@@ -22,6 +24,14 @@ jobs:
     
     - name: Run tests
       run: npm test
+    
+    - name: Update version from release tag
+      run: |
+        # Extract version from GitHub release tag (remove 'v' prefix if present)
+        VERSION=$(echo ${{ github.ref_name }} | sed 's/^v//')
+        # Update version in package.json
+        npm version $VERSION --no-git-tag-version
+        echo "Using version $VERSION from release tag"
     
     - name: Build
       run: npm run build
