@@ -3,17 +3,23 @@ name: Publish to NPM
 on:
   release:
     types: [created]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (optional)'
+        required: false
+        default: ''
 
 jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         fetch-depth: 0
     
     - name: Use Node.js
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@v4
       with:
         node-version: '20.x'
         registry-url: 'https://registry.npmjs.org'
@@ -25,18 +31,57 @@ jobs:
     - name: Run tests
       run: npm test
     
-    - name: Update version from release tag
+    - name: Update version from release tag or input
       run: |
-        # Extract version from GitHub release tag (remove 'v' prefix if present)
-        VERSION=$(echo ${{ github.ref_name }} | sed 's/^v//')
+        if [ "${{ github.event_name }}" == "release" ]; then
+          # Extract version from GitHub release tag (remove 'v' prefix if present)
+          VERSION=$(echo ${{ github.ref_name }} | sed 's/^v//')
+        elif [ -n "${{ github.event.inputs.version }}" ]; then
+          # Use manually provided version
+          VERSION="${{ github.event.inputs.version }}"
+        else
+          # Use the version from package.json
+          VERSION=$(node -p "require('./package.json').version")
+        fi
+        
         # Update version in package.json
-        npm version $VERSION --no-git-tag-version
-        echo "Using version $VERSION from release tag"
+        npm version $VERSION --no-git-tag-version --allow-same-version
+        echo "Using version $VERSION"
+        echo "NPM_VERSION=$VERSION" >> $GITHUB_ENV
     
     - name: Build
       run: npm run build
+    
+    - name: Verify build artifacts
+      run: |
+        if [ ! -d "dist" ]; then
+          echo "Error: dist directory not found after build"
+          exit 1
+        fi
+        
+        if [ ! -f "dist/index.js" ]; then
+          echo "Error: dist/index.js not found after build"
+          exit 1
+        fi
+        
+        echo "Build verification successful"
+    
+    - name: Pack for verification
+      run: |
+        npm pack
+        echo "Package created: $(ls *.tgz)"
     
     - name: Publish to NPM
       run: npm publish --access=public
       env:
         NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        
+    - name: Create GitHub release
+      if: github.event_name == 'workflow_dispatch' && github.event.inputs.version != ''
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: v${{ env.NPM_VERSION }}
+        name: Release v${{ env.NPM_VERSION }}
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
