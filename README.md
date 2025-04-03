@@ -8,6 +8,7 @@ A lightweight, TypeScript-based queue system with persistence, priority support,
 - **Priority Support**: Process important messages first
 - **Persistence**: Save queue state to disk and recover on restart
 - **Batch Processing**: Process multiple items at once
+- **Notification System**: Event-driven architecture for queue notifications
 - **JSON Support**: Handle complex data structures
 - **CLI Interface**: Simple command line interface for queue management
 - **Retry Mechanism**: Automatic retry for failed processing
@@ -70,6 +71,47 @@ const taskQueue = manager.createQueue<any>('tasks');
 
 - [Practical Examples](./docs/examples/practical-examples.md) - Email queue, job processing, distributed workers
 - [JSON Handling](./docs/examples/json-handling.md) - Working with JSON messages and batch processing
+
+### Notification System Example
+
+```typescript
+import { createQueueManager, QueueService } from 'simple-queue';
+
+// Create a queue manager
+const queueManager = createQueueManager('./data');
+
+// Create a queue with batch notification (default batch size is 50)
+const batchQueue = queueManager.createQueue<any>('batch-queue', {
+  batchSize: 50 // Trigger notifications every 50 items
+});
+
+// Subscribe to batch notifications
+const batchSubscriber = {
+  onEvent: (event) => {
+    if (event.type === 'batchReady') {
+      console.log(`Batch ready in queue ${event.queueName}! Processing ${event.data?.batchSize} items...`);
+      // Fetch and process batch of items
+      const items = batchQueue.dequeueMany(event.data?.batchSize || 50);
+      processItems(items);
+    } else if (event.type === 'queueComplete') {
+      console.log(`Queue ${event.queueName} is complete! Processing remaining ${event.data?.remainingItems} items...`);
+      // Process final batch (might be smaller than batch size)
+      const items = batchQueue.dequeueMany(event.data?.remainingItems || 0);
+      processItems(items);
+    }
+  }
+};
+
+// Subscribe to the queue
+batchQueue.subscribe(batchSubscriber);
+
+// When done adding items, mark the queue as complete
+batchQueue.markAsComplete();
+
+function processItems(items) {
+  // Process batch of items...
+}
+```
 
 ## Architecture
 

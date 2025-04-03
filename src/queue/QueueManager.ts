@@ -18,6 +18,9 @@ export default class QueueManager {
     
     const queue = new Queue<T>(options);
     
+    // Set the queue name for event emission
+    queue.setName(name);
+    
     // Set up storage if we have a storage directory
     if (this.storageDir) {
       const storageAdapter = new FileStorageAdapter<T>(
@@ -59,5 +62,9 @@ export default class QueueManager {
   
   public listQueues(): string[] {
     return Array.from(this.queues.keys());
+  }
+  
+  public getQueueNames(): string[] {
+    return this.listQueues();
   }
 }

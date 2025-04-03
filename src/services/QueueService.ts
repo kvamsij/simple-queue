@@ -1,14 +1,18 @@
 import QueueManager from '../queue/QueueManager';
 import { AppConfig } from '../config';
+import { QueueNotificationService } from './QueueNotificationService';
+import { QueueSubscriber, QueueEventType } from '../queue/types';
 
 export class QueueService {
   private queueManager: QueueManager;
   private logger: AppConfig['logger'];
   private processors: Map<string, NodeJS.Timeout> = new Map();
+  private notificationService: QueueNotificationService;
 
   constructor(private config: AppConfig) {
     this.logger = config.logger;
     this.queueManager = new QueueManager(config.storageDir);
+    this.notificationService = new QueueNotificationService(this.logger, this.queueManager);
   }
 
   public getQueueManager(): QueueManager {
@@ -117,5 +121,52 @@ export class QueueService {
     } catch (error) {
       this.logger.error('Error saving queues', error);
     }
+  }
+
+  /**
+   * Get the notification service
+   */
+  public getNotificationService(): QueueNotificationService {
+    return this.notificationService;
+  }
+
+  /**
+   * Subscribe to events from a specific queue
+   * @param queueName The queue to subscribe to
+   * @param subscriber The subscriber that will receive events
+   * @param eventTypes Optional array of event types to filter
+   * @returns true if subscription was successful
+   */
+  public subscribeToQueue<T>(
+    queueName: string, 
+    subscriber: QueueSubscriber<T>, 
+    eventTypes?: QueueEventType[]
+  ): boolean {
+    return this.notificationService.subscribeToQueue(queueName, subscriber, { eventTypes });
+  }
+
+  /**
+   * Create a webhook subscription to a queue
+   * @param queueName The queue to subscribe to
+   * @param webhookUrl The URL to send notifications to
+   * @param eventTypes Optional array of event types to filter
+   * @returns true if subscription was successful
+   */
+  public createWebhookSubscription(
+    queueName: string,
+    webhookUrl: string,
+    eventTypes?: QueueEventType[]
+  ): boolean {
+    const subscriber = this.notificationService.createWebhookSubscriber(webhookUrl);
+    return this.subscribeToQueue(queueName, subscriber, eventTypes);
+  }
+
+  /**
+   * Mark a queue as complete, triggering notification for any remaining items
+   * @param queueName The queue to mark as complete
+   * @returns true if successful
+   */
+  public markQueueAsComplete(queueName: string): boolean {
+    return this.notificationService.markQueueAsComplete(queueName);
   }
 }

@@ -1,4 +1,4 @@
-import { QueueItem, QueueOptions, QueueProcessor } from './types';
+import { QueueItem, QueueOptions, QueueProcessor, QueueEvent, QueueEventType, QueueSubscriber } from './types';
 import { v4 as uuidv4 } from 'uuid';
 import { StorageAdapter } from './storage';
 
@@ -8,6 +8,10 @@ export default class Queue<T> {
   private options: Required<QueueOptions>;
   private processors: QueueProcessor<T>[] = [];
   private storageAdapter?: StorageAdapter<T>;
+  private subscribers: Set<QueueSubscriber<T>> = new Set();
+  private name: string = "unknown";
+  private isComplete: boolean = false;
+  private itemsSinceLastBatchNotification: number = 0;
   
   constructor(options: QueueOptions = {}) {
     this.items = new Map();
@@ -15,8 +19,67 @@ export default class Queue<T> {
     this.options = {
       maxSize: options.maxSize || 1000,
       retryLimit: options.retryLimit || 3,
-      priorityEnabled: options.priorityEnabled || false
+      priorityEnabled: options.priorityEnabled || false,
+      batchSize: options.batchSize || 50
     };
+  }
+
+  // Set queue name
+  public setName(name: string): void {
+    this.name = name;
+  }
+
+  // Subscribe to queue events
+  public subscribe(subscriber: QueueSubscriber<T>): void {
+    this.subscribers.add(subscriber);
+  }
+
+  // Unsubscribe from queue events
+  public unsubscribe(subscriber: QueueSubscriber<T>): void {
+    this.subscribers.delete(subscriber);
+  }
+
+  // Emit events to all subscribers
+  private emit(event: QueueEvent<T>): void {
+    // Ensure queue name and timestamp are set
+    event.queueName = this.name;
+    event.timestamp = new Date();
+    
+    for (const subscriber of this.subscribers) {
+      try {
+        subscriber.onEvent(event);
+      } catch (error) {
+        console.error(`Error notifying subscriber:`, error);
+      }
+    }
+  }
+
+  // Mark the queue as complete, triggering notification for remaining items
+  public markAsComplete(): void {
+    if (this.isComplete) return;
+    
+    this.isComplete = true;
+    
+    // Emit queueComplete event if there are remaining items
+    if (this.items.size > 0) {
+      this.emit({
+        type: 'queueComplete',
+        queueName: this.name,
+        timestamp: new Date(),
+        data: {
+          remainingItems: this.items.size,
+          itemsSinceLastNotification: this.itemsSinceLastBatchNotification
+        }
+      });
+      
+      // Reset counter after notification
+      this.itemsSinceLastBatchNotification = 0;
+    }
+  }
+
+  // Reset the completion state
+  public resetComplete(): void {
+    this.isComplete = false;
   }
 
   // Set a storage adapter for persistence
@@ -68,6 +131,36 @@ export default class Queue<T> {
     // Auto-save if we have a storage adapter
     this.autoSave();
 
+    // Increment counter for batch notification
+    this.itemsSinceLastBatchNotification++;
+
+    // Emit itemAdded event
+    this.emit({
+      type: 'itemAdded',
+      queueName: this.name,
+      timestamp: new Date(),
+      data: { 
+        item: this.items.get(id) 
+      }
+    });
+
+    // Check if we've reached batch size
+    if (this.itemsSinceLastBatchNotification >= this.options.batchSize) {
+      // Emit batchReady event
+      this.emit({
+        type: 'batchReady',
+        queueName: this.name,
+        timestamp: new Date(),
+        data: {
+          batchSize: this.options.batchSize,
+          itemsSinceLastNotification: this.itemsSinceLastBatchNotification
+        }
+      });
+      
+      // Reset counter after notification
+      this.itemsSinceLastBatchNotification = 0;
+    }
+
     return id;
   }
 
@@ -112,11 +205,31 @@ export default class Queue<T> {
       return false;
     }
     
+    const item = this.items.get(id);
     this.processing.delete(id);
     this.items.delete(id);
     
     // Auto-save if we have a storage adapter
     this.autoSave();
+    
+    // Emit itemProcessed event
+    if (item) {
+      this.emit({
+        type: 'itemProcessed',
+        queueName: this.name,
+        timestamp: new Date(),
+        data: { item }
+      });
+    }
+    
+    // Emit queueEmpty event if applicable
+    if (this.items.size === 0) {
+      this.emit({
+        type: 'queueEmpty',
+        queueName: this.name,
+        timestamp: new Date()
+      });
+    }
     
     return true;
   }

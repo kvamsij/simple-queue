@@ -57,6 +57,10 @@ export class CliInterface {
     console.log('  retrymany <queue> <id1,id2,...> - Retry multiple items at once');
     console.log('  size <queue>        - Show the number of items in a queue');
     console.log('  save                - Save all queues to disk');
+    console.log('  subscribe <queue> [events] - Subscribe to queue events in console');
+    console.log('  webhook <queue> <url> [events] - Create webhook subscription');
+    console.log('  complete <queue>    - Mark a queue as complete (triggers notification)');
+    console.log('  listen <queue> [events] - Listen to queue events in console');
     console.log('  exit                - Save all queues and exit\n');
   }
 

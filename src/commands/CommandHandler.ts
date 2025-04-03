@@ -39,6 +39,12 @@ export class CommandHandler {
     this.commands.set('size', this.createSizeCommand());
     this.commands.set('save', this.createSaveCommand());
     this.commands.set('exit', this.createExitCommand());
+    
+    // Add notification system commands
+    this.commands.set('subscribe', this.createSubscribeCommand());
+    this.commands.set('webhook', this.createWebhookCommand());
+    this.commands.set('complete', this.createCompleteQueueCommand());
+    this.commands.set('listen', this.createListenCommand());
   }
 
   public async executeCommand(commandName: string, args: string[]): Promise<void> {
@@ -85,6 +91,10 @@ export class CommandHandler {
         console.log('  retrymany <queue> <id1,id2,...> - Retry multiple items at once');
         console.log('  size <queue>        - Show the number of items in a queue');
         console.log('  save                - Save all queues to disk');
+        console.log('  subscribe <queue> [events] - Subscribe to queue events in console');
+        console.log('  webhook <queue> <url> [events] - Create webhook subscription');
+        console.log('  complete <queue>            - Mark a queue as complete (triggers notification)');
+        console.log('  listen <queue> [events]     - Listen to queue events in console');
         console.log('  exit                - Save all queues and exit\n');
       }
     };
@@ -436,6 +446,137 @@ export class CommandHandler {
         // Exit process
         this.logger.info('Exiting application...');
         process.exit(0);
+      }
+    };
+  }
+
+  private createSubscribeCommand(): Command {
+    return {
+      execute: async (args: string[]) => {
+        if (args.length < 1) {
+          this.logger.error('Usage: subscribe <queueName> [eventType1,eventType2,...]');
+          return;
+        }
+        
+        const queueName = args[0];
+        const eventTypes = args.length > 1 ? args[1].split(',') : undefined;
+        
+        try {
+          // Create a console subscriber for demonstration
+          const consoleSubscriber = {
+            onEvent: (event: any) => {
+              this.logger.info(`[${event.queueName}] Event: ${event.type}`, event.data || '');
+            }
+          };
+          
+          const success = this.queueService.subscribeToQueue(queueName, consoleSubscriber, eventTypes as any);
+          
+          if (success) {
+            this.logger.info(`Subscribed to events from queue ${queueName}`);
+            if (eventTypes) {
+              this.logger.info(`Filtering events: ${eventTypes.join(', ')}`);
+            }
+            this.logger.info(`(Events will appear in this console. Use Ctrl+C to stop listening)`);
+          } else {
+            this.logger.error(`Failed to subscribe to queue ${queueName}`);
+          }
+        } catch (error) {
+          this.logger.error('Failed to subscribe to queue events', error);
+        }
+      }
+    };
+  }
+
+  private createWebhookCommand(): Command {
+    return {
+      execute: async (args: string[]) => {
+        if (args.length < 2) {
+          this.logger.error('Usage: webhook <queueName> <webhookUrl> [eventType1,eventType2,...]');
+          return;
+        }
+        
+        const queueName = args[0];
+        const webhookUrl = args[1];
+        const eventTypes = args.length > 2 ? args[2].split(',') : undefined;
+        
+        try {
+          const success = this.queueService.createWebhookSubscription(queueName, webhookUrl, eventTypes as any);
+          
+          if (success) {
+            this.logger.info(`Created webhook subscription for queue ${queueName} to ${webhookUrl}`);
+            if (eventTypes) {
+              this.logger.info(`Filtering events: ${eventTypes.join(', ')}`);
+            }
+          } else {
+            this.logger.error(`Failed to create webhook subscription`);
+          }
+        } catch (error) {
+          this.logger.error('Failed to create webhook subscription', error);
+        }
+      }
+    };
+  }
+
+  private createCompleteQueueCommand(): Command {
+    return {
+      execute: async (args: string[]) => {
+        if (args.length < 1) {
+          this.logger.error('Usage: complete <queueName>');
+          return;
+        }
+        
+        const queueName = args[0];
+        
+        try {
+          const success = this.queueService.markQueueAsComplete(queueName);
+          
+          if (success) {
+            this.logger.info(`Marked queue ${queueName} as complete`);
+            this.logger.info(`Any remaining items will trigger a queueComplete notification`);
+          } else {
+            this.logger.error(`Failed to mark queue ${queueName} as complete`);
+          }
+        } catch (error) {
+          this.logger.error('Failed to mark queue as complete', error);
+        }
+      }
+    };
+  }
+
+  private createListenCommand(): Command {
+    return {
+      execute: async (args: string[]) => {
+        if (args.length < 1) {
+          this.logger.error('Usage: listen <queueName> [eventType1,eventType2,...]');
+          return;
+        }
+        
+        const queueName = args[0];
+        const eventTypes = args.length > 1 ? args[1].split(',') : undefined;
+        
+        const queue = this.queueManager.getQueue(queueName);
+        if (!queue) {
+          this.logger.error(`Queue ${queueName} does not exist`);
+          return;
+        }
+        
+        // Create a console subscriber for demonstration
+        const notificationService = this.queueService.getNotificationService();
+        const consoleSubscriber = notificationService.createConsoleSubscriber();
+        
+        const success = notificationService.subscribeToQueue(queueName, consoleSubscriber, {
+          eventTypes: eventTypes as any
+        });
+        
+        if (success) {
+          this.logger.info(`Listening for events from queue ${queueName}`);
+          if (eventTypes) {
+            this.logger.info(`Filtering events: ${eventTypes.join(', ')}`);
+          }
+          this.logger.info(`(Events will appear in this console. Type "stoplisten" or use Ctrl+C to stop listening)`);
+        } else {
+          this.logger.error(`Failed to listen to queue ${queueName}`);
+        }
       }
     };
   }
