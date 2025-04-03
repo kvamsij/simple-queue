@@ -5,6 +5,9 @@ name: Publish to NPM
 on:
   release:
     types: [created]
+  push:
+    paths:
+      - '.github/workflows/publish.yml'
   workflow_dispatch:
     inputs:
       version:
@@ -82,8 +85,8 @@ jobs:
       if: github.event_name == 'workflow_dispatch' && github.event.inputs.version != ''
       uses: softprops/action-gh-release@v1
       with:
-        tag_name: v${{ env.NPM_VERSION }}
-        name: Release v${{ env.NPM_VERSION }}
+        tag_name: ${{ format('v{0}', env.NPM_VERSION) }}
+        name: ${{ format('Release v{0}', env.NPM_VERSION) }}
         generate_release_notes: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
