@@ -1,3 +1,5 @@
+# This workflow publishes a package to NPM when a release is created or manually triggered.
+# It also verifies the build artifacts and creates a GitHub release if a version is provided.
 name: Publish to NPM
 
 on:
