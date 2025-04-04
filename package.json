@@ -34,12 +34,12 @@
   "author": "Vamsi <kvamsij@gmail.com> (https://github.com/kvamsij)",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/kvamsi/simple-queue.git"
+    "url": "git+https://github.com/kvamsij/simple-queue.git"
   },
   "bugs": {
-    "url": "https://github.com/kvamsi/simple-queue/issues"
+    "url": "https://github.com/kvamsij/simple-queue/issues"
   },
-  "homepage": "https://github.com/kvamsi/simple-queue#readme",
+  "homepage": "https://github.com/kvamsij/simple-queue#readme",
   "license": "MIT",
   "dependencies": {
     "ts-node": "^10.9.2",
